@@ -5,10 +5,7 @@ services:
     env_file: .env
     environment:
       DATA_DIR: /data
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
+      REDIS_URL: ${REDIS_URL:-}
     volumes:
       - ./data:/data
     ports:
@@ -20,12 +17,14 @@ services:
       retries: 3
       start_period: 10s
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+  # Use an existing Redis service by setting REDIS_URL in .env, for example:
+  # REDIS_URL=redis://redis.example.internal:6379/0
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   command: ["redis-server", "--save", "", "--appendonly", "no"]
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5

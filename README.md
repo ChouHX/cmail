@@ -5,7 +5,7 @@ This replaces the previous Mailu-based pickup deployment.
 ## Runtime
 
 - App: Flask + SQLite
-- Cache/queue: Redis
+- Cache/queue: external Redis via `REDIS_URL` with SQLite fallback
 - Reverse proxy and HTTPS: 1Panel
 - Public admin: `https://mail.bbbnn.me/admin/login`
 - Ingest endpoint: `https://mail.bbbnn.me/api/cloudflare-email`
@@ -34,6 +34,10 @@ docker compose ps
 
 To use another local port, set `APP_PORT` in `.env` (for example,
 `APP_PORT=18000`) and use that same port in 1Panel.
+
+Set `REDIS_URL` in `.env` to connect the app container to an existing Redis
+service, for example `redis://redis.example.internal:6379/0`. If it is empty or
+unavailable, the app falls back to SQLite ordering.
 
 ## 1Panel website setup
 
