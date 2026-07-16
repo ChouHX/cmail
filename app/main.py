@@ -14,6 +14,7 @@ import threading
 import time
 from datetime import datetime, timezone, timedelta
 from functools import wraps
+from html.parser import HTMLParser
 from pathlib import Path
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
@@ -357,6 +358,58 @@ def decode_header(value):
     return str(email.header.make_header(email.header.decode_header(value)))
 
 
+class HTMLTextExtractor(HTMLParser):
+    BLOCK_TAGS = {"address", "article", "aside", "blockquote", "br", "div", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "header", "li", "p", "section", "table", "tr"}
+    SKIP_TAGS = {"script", "style", "head", "title", "meta", "link"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.skip_depth = 0
+
+    def handle_starttag(self, tag, _attrs):
+        tag = tag.lower()
+        if tag in self.SKIP_TAGS:
+            self.skip_depth += 1
+            return
+        if self.skip_depth:
+            return
+        if tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        if tag in self.SKIP_TAGS and self.skip_depth:
+            self.skip_depth -= 1
+            return
+        if self.skip_depth:
+            return
+        if tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        if not self.skip_depth:
+            self.parts.append(data)
+
+    def get_text(self):
+        text = "".join(self.parts)
+        text = re.sub(r"[ \t\r\f\v]+", " ", text)
+        text = re.sub(r" *\n *", "\n", text)
+        return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def html_to_text(value):
+    if not value:
+        return ""
+    parser = HTMLTextExtractor()
+    try:
+        parser.feed(value)
+        parser.close()
+    except Exception:
+        return " ".join(re.sub(r"<[^>]+>", " ", value).split())
+    return parser.get_text()[:BODY_LIMIT]
+
+
 def message_part(message, content_type):
     candidates = []
     if message.is_multipart():
@@ -382,12 +435,12 @@ def parse_message(raw_bytes):
     parsed = email.parser.BytesParser(policy=email.policy.default).parsebytes(raw_bytes)
     text_body = message_part(parsed, "text/plain")
     html_body = message_part(parsed, "text/html")
-    preview_source = text_body or html_body
-    preview = " ".join(preview_source.replace("<", " <").split())[:180]
+    plain_body = text_body or html_to_text(html_body)
+    preview = " ".join(plain_body.split())[:180]
     return {
         "sender": decode_header(parsed.get("from")) or "",
         "subject": decode_header(parsed.get("subject")) or "(no subject)",
-        "text_body": text_body,
+        "text_body": plain_body,
         "html_body": html_body,
         "preview": preview,
     }
@@ -763,7 +816,7 @@ def _latest_entry(link, pattern):
         latest = db().execute("SELECT * FROM message WHERE id = ?", (link["latest_message_id"],)).fetchone()
     if not latest:
         return {"email": link["email"], "token": link["token"], "latest": None}
-    body_text = (latest["text_body"] or "") + "\n" + (latest["html_body"] or "")
+    body_text = latest["text_body"] or html_to_text(latest["html_body"])
     return {
         "email": link["email"],
         "token": link["token"],
