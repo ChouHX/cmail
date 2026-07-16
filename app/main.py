@@ -43,6 +43,8 @@ BODY_LIMIT = 50000
 PER_PAGE = 20
 BATCH_QUEUE_ALL_KEY = "pickup:mailbox_queue:all"
 BATCH_QUEUE_OWNER_PREFIX = "pickup:mailbox_queue:owner:"
+OLD_BATCH_CODE_REGEX = r"\b(\d{4,6}|[A-Za-z]{4,6}|[A-Za-z0-9]{4,6})\b"
+BATCH_CODE_REGEX = r"\b(\d{4,8}|[A-Z0-9]{2,8}(?:-[A-Z0-9]{2,8})+|(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{4,8})\b"
 
 
 app = Flask(__name__)
@@ -111,6 +113,13 @@ def extract_code(text, pattern):
     if not match:
         return ""
     return match.group(1) if match.groups() else match.group(0)
+
+
+def batch_code_regex():
+    pattern = session.get("batch_regex")
+    if not pattern or pattern == OLD_BATCH_CODE_REGEX:
+        return BATCH_CODE_REGEX
+    return pattern
 
 
 def utc_now():
@@ -817,6 +826,7 @@ def _latest_entry(link, pattern):
     if not latest:
         return {"email": link["email"], "token": link["token"], "latest": None}
     body_text = latest["text_body"] or html_to_text(latest["html_body"])
+    code_source = "\n".join([latest["subject"] or "", body_text or ""])
     return {
         "email": link["email"],
         "token": link["token"],
@@ -827,7 +837,7 @@ def _latest_entry(link, pattern):
             "sender_email": _extract_email(latest["sender"]),
             "recipient": latest["recipient"],
             "time_text": format_time(latest["received_at"]),
-            "code": extract_code(body_text, pattern),
+            "code": extract_code(code_source, pattern),
         },
     }
 
@@ -960,7 +970,7 @@ def _batch_page(pattern, q=None, page=1, per_page=PER_PAGE):
 @app.get("/admin/batch")
 @login_required
 def admin_batch():
-    pattern = session.get("batch_regex") or r"\b(\d{4,6}|[A-Za-z]{4,6}|[A-Za-z0-9]{4,6})\b"
+    pattern = batch_code_regex()
     q = request.args.get("q") or ""
     try:
         page = max(1, int(request.args.get("page", 1)))
@@ -997,7 +1007,7 @@ def admin_batch_regex():
 @app.get("/admin/batch/data")
 @login_required
 def admin_batch_data():
-    pattern = session.get("batch_regex") or r"\b(\d{4,6}|[A-Za-z]{4,6}|[A-Za-z0-9]{4,6})\b"
+    pattern = batch_code_regex()
     q = request.args.get("q") or ""
     try:
         page = max(1, int(request.args.get("page", 1)))
