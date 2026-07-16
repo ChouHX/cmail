@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}修改密码 | 取件管理{% endblock %}
+{% block content %}
+<header class="mb-4">
+  <h1 class="text-base font-semibold text-zinc-900">修改密码</h1>
+  <p class="mt-0.5 text-xs text-zinc-500">{{ session.username }}</p>
+</header>
+
+<section class="panel w-full max-w-sm p-6">
+  <form class="grid gap-3" method="post">
+    <label class="field-label">原密码
+      <input name="old_password" type="password" required autocomplete="current-password">
+    </label>
+    <label class="field-label">新密码
+      <input name="new_password" type="password" required autocomplete="new-password" minlength="6">
+    </label>
+    <button class="btn-primary mt-1 w-full" type="submit">保存修改</button>
+  </form>
+</section>
+{% endblock %}

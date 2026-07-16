@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+
+data/
+*.db
+*.db-shm
+*.db-wal
+
+__pycache__/
+*.py[cod]
+
+node_modules/
+
+.agents/
+.codex/

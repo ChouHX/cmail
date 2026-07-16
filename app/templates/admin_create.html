@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}生成邮箱 | 取件管理{% endblock %}
+{% block content %}
+<header class="mb-4 flex items-center justify-between gap-3">
+  <div>
+    <h1 class="text-base font-semibold text-zinc-900">生成邮箱</h1>
+    <p class="mt-0.5 text-xs text-zinc-500">
+      {{ domain }}
+      {% if quota is not none and quota >= 0 %}· 配额剩余 {{ remaining }}{% endif %}
+    </p>
+  </div>
+  <div class="flex items-center gap-2">
+    <button class="button hidden sm:inline-flex" type="button" data-dialog="specified">指定邮箱 / 导入 TXT</button>
+    <a class="button" href="{{ url_for('admin_pickup_list', domain=domain) }}">返回列表</a>
+  </div>
+</header>
+
+<section class="panel p-4">
+  <div class="mb-3 flex items-center justify-between gap-3">
+    <div>
+    <h2 class="text-sm font-semibold text-zinc-900">随机生成</h2>
+    <p class="mt-0.5 text-xs text-zinc-500">按规则生成随机邮箱名称</p>
+    </div>
+    <button class="button sm:hidden" type="button" data-dialog="specified">指定邮箱</button>
+  </div>
+  <form class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-12 lg:items-end" method="post">
+    <input type="hidden" name="mode" value="random">
+    <label class="field-label col-span-2 sm:col-span-1 lg:col-span-3">域名
+      <select name="domain" required>
+        {% for item in domains %}
+        <option value="{{ item }}" {% if item == domain %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field-label col-span-2 sm:col-span-1 lg:col-span-3">前缀
+      <input name="prefix" autocomplete="off" placeholder="可选，如 user">
+    </label>
+    <label class="field-label lg:col-span-1">长度
+      <input name="length" type="number" min="1" max="64" value="10" required>
+    </label>
+    <label class="field-label lg:col-span-2">格式
+      <select name="charset" required>
+        <option value="alnum" selected>字母 + 数字</option>
+        <option value="lower">小写字母</option>
+        <option value="upper">大写字母</option>
+        <option value="digits">纯数字</option>
+      </select>
+    </label>
+    <label class="field-label lg:col-span-1">数量
+      <input name="count" type="number" min="1" max="1000" value="1" required>
+    </label>
+    <button class="btn-primary col-span-2 sm:col-span-1 lg:col-span-2" type="submit">生成</button>
+  </form>
+</section>
+
+<section class="panel mt-4 overflow-hidden">
+  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 p-3">
+    <div>
+      <h2 class="text-sm font-semibold text-zinc-900">生成结果</h2>
+      <p class="mt-0.5 text-xs text-zinc-500">{% if generated %}共 {{ generated|length }} 条{% else %}生成后结果将显示在此处{% endif %}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button class="copy-textarea" type="button" data-target="generated-records">复制结果</button>
+      <button class="download-textarea btn-primary" type="button" data-target="generated-records" data-filename="pickup-mailboxes.txt">导出 TXT</button>
+    </div>
+  </div>
+  <div class="p-3">
+    <textarea id="generated-records" class="w-full resize-y bg-zinc-50" readonly rows="{{ [[generated|length + 2, 6]|max, 14]|min }}" placeholder="生成后结果将显示在此处">{% for row in generated %}{{ row.email|safe_email }} ---- {{ row.url }}
+{% endfor %}</textarea>
+  </div>
+</section>
+
+{% if skipped %}
+<section class="panel mt-4 overflow-hidden">
+  <div class="border-b border-zinc-200 p-3">
+    <h2 class="text-sm font-semibold text-zinc-900">未创建项目</h2>
+    <p class="mt-0.5 text-xs text-zinc-500">共 {{ skipped|length }} 条，可能是格式错误、重复、域名不受支持或超出配额</p>
+  </div>
+  <div class="p-3">
+    <textarea class="w-full resize-y bg-zinc-50" readonly rows="{{ [[skipped|length + 1, 5]|max, 10]|min }}">{% for item in skipped %}{{ item }}
+{% endfor %}</textarea>
+  </div>
+</section>
+{% endif %}
+
+<dialog id="dialog-specified" class="max-w-xl">
+  <form class="grid" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="mode" value="specified">
+    <div class="dialog-header">指定邮箱</div>
+    <div class="grid gap-3 p-4">
+      <p class="text-xs text-zinc-500">一行一个，可填写完整邮箱或只填写邮箱前缀；文本框与 TXT 可同时导入。</p>
+      <label class="field-label">默认域名
+        <select name="domain" required>
+          {% for item in domains %}
+          <option value="{{ item }}" {% if item == domain %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field-label">邮箱列表
+        <textarea name="mailboxes" rows="8" placeholder="alice&#10;bob@{{ domain }}&#10;service-01"></textarea>
+      </label>
+      <label class="field-label">导入 TXT（UTF-8，最大 1 MB）
+        <input name="mailbox_file" type="file" accept=".txt,text/plain">
+      </label>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="button" data-close-dialog>取消</button>
+      <button type="submit" class="button btn-primary">创建指定邮箱</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

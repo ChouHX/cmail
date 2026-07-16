@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}登录 | 取件管理{% endblock %}
+{% block content %}
+<div class="flex min-h-[80vh] items-center justify-center">
+  <section class="panel w-full max-w-sm p-6">
+    <div class="mb-5">
+      <h1 class="text-base font-semibold text-zinc-900">登录</h1>
+      <p class="mt-1 text-xs text-zinc-500">Mail Pickup 管理后台</p>
+    </div>
+    <form class="grid gap-3" method="post">
+      <label class="field-label">用户名
+        <input name="username" required autofocus autocomplete="username">
+      </label>
+      <label class="field-label">密码
+        <input name="password" type="password" required autocomplete="current-password">
+      </label>
+      <button class="btn-primary mt-1 w-full" type="submit">登录</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

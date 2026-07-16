@@ -1,0 +1,10 @@
+name = "bbbnn-mail-ingest-worker"
+main = "worker.js"
+compatibility_date = "2026-07-09"
+
+[vars]
+INGEST_URL = "https://mail.bbbnn.me/api/cloudflare-email"
+
+# Set this with:
+# wrangler secret put INGEST_SECRET
+# value must match /opt/pickup-worker-mail/.env INGEST_SECRET

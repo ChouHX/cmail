@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}批量取件 | 取件管理{% endblock %}
+{% block content %}
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-base font-semibold text-zinc-900">批量取件</h1>
+    <p class="mt-0.5 text-xs text-zinc-500">按最近收信时间自动排队，只保留最近 1 小时邮件</p>
+  </div>
+  <div class="flex flex-wrap items-end justify-end gap-2">
+    <label class="field-label w-20">间隔（秒）
+      <input id="refresh-interval" type="number" min="3" max="300" step="1" value="30" inputmode="numeric">
+    </label>
+    <span class="h-8 min-w-20 self-end whitespace-nowrap px-1 text-right text-xs leading-8 text-zinc-500" id="refresh-countdown">30 秒后刷新</span>
+    <button class="button" id="refresh-btn" type="button">刷新</button>
+    <a class="button" href="{{ url_for('admin_pickup_list') }}">返回列表</a>
+  </div>
+</header>
+
+<section class="panel mb-4 p-4">
+  <div class="flex flex-wrap items-end gap-3">
+    <form class="flex min-w-0 flex-wrap items-end gap-2" method="post" action="{{ url_for('admin_batch_regex') }}">
+      <label class="field-label w-56">提取验证码正则
+        <input name="regex" value="{{ pattern }}" placeholder="例如 (\d{6})" autocomplete="off">
+      </label>
+      <button class="btn-primary" type="submit">保存</button>
+    </form>
+    <div class="flex min-w-0 flex-1 items-end gap-2">
+      <label class="field-label flex-1">搜索
+        <input id="search-input" type="search" placeholder="收件人或主题..." value="{{ q }}" autocomplete="off">
+      </label>
+      <button class="btn-primary shrink-0" id="search-btn" type="button">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+        搜索
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="panel overflow-x-auto">
+  <table class="w-full border-collapse text-sm">
+    <colgroup>
+      <col class="min-w-[160px]">
+      <col class="w-36">
+      <col class="w-36">
+      <col class="w-36">
+      <col class="w-24">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="border-b border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-left text-xs font-medium text-zinc-500">主题</th>
+        <th class="border-b border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-left text-xs font-medium text-zinc-500">发件人</th>
+        <th class="border-b border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-left text-xs font-medium text-zinc-500">收件人</th>
+        <th class="border-b border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-left text-xs font-medium text-zinc-500">时间</th>
+        <th class="border-b border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-left text-xs font-medium text-zinc-500">验证码</th>
+      </tr>
+    </thead>
+    <tbody id="batch-rows">
+      {% for item in items %}
+      <tr class="border-b border-zinc-100" data-email="{{ item.email }}">
+        {% if item.latest %}
+        <td class="cell-subject truncate max-w-0 font-medium text-sky-700 underline cursor-pointer hover:text-sky-900 px-2.5 py-1.5" data-id="{{ item.latest.id }}">{{ item.latest.subject }}</td>
+        <td class="cell-sender truncate text-zinc-700 px-2.5 py-1.5">{{ (item.latest.sender_email or '-')|safe_email }}</td>
+        <td class="cell-recipient truncate text-zinc-700 px-2.5 py-1.5">{{ item.email|safe_email }}</td>
+        <td class="cell-time whitespace-nowrap text-xs text-zinc-500 px-2.5 py-1.5">{{ item.latest.time_text }}</td>
+        <td class="cell-code px-2.5 py-1.5">{% if item.latest.code %}<a class="font-mono text-sm font-semibold text-sky-600 underline hover:text-sky-800" href="#" data-code="{{ item.latest.code }}">{{ item.latest.code }}</a>{% else %}<span class="font-mono text-sm text-zinc-400">—</span>{% endif %}</td>
+        {% else %}
+        <td class="cell-subject text-zinc-400 px-2.5 py-1.5" data-id="0">暂无邮件</td>
+        <td class="cell-sender text-zinc-400 px-2.5 py-1.5">—</td>
+        <td class="cell-recipient truncate text-zinc-700 px-2.5 py-1.5">{{ item.email|safe_email }}</td>
+        <td class="cell-time text-zinc-400 px-2.5 py-1.5">—</td>
+        <td class="cell-code px-2.5 py-1.5"><span class="font-mono text-sm text-zinc-400">—</span></td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td class="py-8 text-center text-zinc-400" colspan="5">暂无邮箱</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="mt-3 flex items-center justify-between gap-2 text-sm" id="batch-pagination" data-page="{{ page }}" data-pages="{{ pages }}" data-total="{{ total }}" data-version="{{ version }}">
+  <span class="text-zinc-500" id="page-info">第 {{ start_item }}-{{ end_item }} 条，共 {{ total }} 条</span>
+  <div class="flex gap-2">
+    <button class="button" id="prev-page"{% if page <= 1 %} disabled{% endif %}>上一页</button>
+    <button class="button" id="next-page"{% if page >= pages %} disabled{% endif %}>下一页</button>
+  </div>
+</div>
+
+<dialog id="message-dialog" class="max-w-3xl">
+  <div class="dialog-header flex items-center justify-between gap-2">
+    <span class="truncate font-semibold text-zinc-900" id="dialog-subject">邮件详情</span>
+    <button class="button shrink-0" id="dialog-close" type="button">关闭</button>
+  </div>
+  <div class="flex flex-col gap-3 border-b border-zinc-100 px-4 py-3 text-xs text-zinc-500" id="dialog-meta"></div>
+  <div class="p-0" id="dialog-body">
+    <iframe id="dialog-iframe" class="w-full" sandbox="" style="height: 65vh; border: none; display: block;"></iframe>
+  </div>
+</dialog>
+
+<script src="{{ url_for('static', filename='batch.js') }}"></script>
+{% endblock %}

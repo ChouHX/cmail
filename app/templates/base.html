@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>{% block title %}取件管理{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v=css_version) }}">
+    <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+  </head>
+  <body class="min-h-screen">
+    {% set login_page = request.endpoint == "admin_login" %}
+    {% if not login_page %}
+    <header class="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
+      <div class="relative mx-auto flex h-12 max-w-5xl items-center gap-3 px-4">
+        <a class="text-sm font-semibold tracking-tight text-zinc-900" href="{{ url_for('admin_pickup_list') }}">Mail Pickup</a>
+        <button id="nav-toggle" class="md:hidden -ml-1 rounded p-1.5 text-zinc-500 hover:bg-zinc-100" type="button">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+        </button>
+        <nav class="hidden md:flex items-center gap-1 text-sm">
+          <a class="rounded px-2 py-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_pickup_list') }}">邮箱列表</a>
+          <a class="rounded px-2 py-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_pickup_create') }}">生成邮箱</a>
+          <a class="rounded px-2 py-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_batch') }}">批量取件</a>
+          {% if session.is_super %}
+          <a class="rounded px-2 py-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_users_list') }}">用户管理</a>
+          {% endif %}
+        </nav>
+        <div class="ml-auto flex items-center gap-1 text-sm">
+          <a class="hidden md:inline-block rounded px-2 py-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_account_password') }}">修改密码</a>
+          <span class="px-1 text-xs text-zinc-400 truncate max-w-20">{{ session.username }}</span>
+          <a class="rounded px-2 py-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_logout') }}">退出</a>
+        </div>
+      </div>
+      <div id="nav-dropdown" class="hidden md:hidden absolute left-0 right-0 z-20 border-b border-zinc-200 bg-white px-4 py-2 shadow-lg space-y-1 text-sm">
+        <a class="block rounded px-2 py-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_pickup_list') }}">邮箱列表</a>
+        <a class="block rounded px-2 py-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_pickup_create') }}">生成邮箱</a>
+        <a class="block rounded px-2 py-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_batch') }}">批量取件</a>
+        {% if session.is_super %}
+        <a class="block rounded px-2 py-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900" href="{{ url_for('admin_users_list') }}">用户管理</a>
+        {% endif %}
+        <a class="block rounded px-2 py-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 md:hidden" href="{{ url_for('admin_account_password') }}">修改密码</a>
+      </div>
+    </header>
+    {% endif %}
+
+    <main class="mx-auto max-w-5xl px-4 py-6">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="mb-4 grid gap-2">
+        {% for category, message in messages %}
+        <div class="rounded-md border px-3 py-2 text-sm {% if category == 'error' %}border-rose-200 bg-rose-50 text-rose-700{% else %}border-zinc-200 bg-zinc-50 text-zinc-700{% endif %}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

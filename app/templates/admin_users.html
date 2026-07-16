@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}用户管理 | 取件管理{% endblock %}
+{% block content %}
+<header class="mb-4 flex items-center justify-between gap-3">
+  <div>
+    <h1 class="text-base font-semibold text-zinc-900">用户管理</h1>
+    <p class="mt-0.5 text-xs text-zinc-500">分配邮箱创建配额，密码自动生成</p>
+  </div>
+  <div class="flex gap-2">
+    <button type="button" class="button btn-primary" data-dialog="create">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+      新建用户
+    </button>
+    <a class="button" href="{{ url_for('admin_pickup_list') }}">返回列表</a>
+  </div>
+</header>
+
+<section class="panel overflow-x-auto">
+  <table class="admin-table">
+    <colgroup>
+      <col>
+      <col class="w-20">
+      <col class="w-28">
+      <col class="w-24">
+      <col class="w-24">
+      <col class="w-48">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>用户名</th>
+        <th>角色</th>
+        <th>配额</th>
+        <th>已创建</th>
+        <th>剩余</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="{% if u.is_super %}text-zinc-400{% endif %}">
+        <td class="font-medium text-zinc-800">{{ u.username }}</td>
+        <td>{% if u.is_super %}<span class="badge badge-on">超级</span>{% else %}<span class="badge badge-off">普通</span>{% endif %}</td>
+        <td>{% if u.quota < 0 %}无限制{% else %}{{ u.quota }}{% endif %}</td>
+        <td>{{ u.created_count }}</td>
+        <td>{% if u.quota < 0 %}∞{% else %}{{ [u.quota - u.created_count, 0]|max }}{% endif %}</td>
+        <td>
+          {% if not u.is_super %}
+          <div class="flex items-center gap-1">
+            <button type="button" class="button px-2" title="改配额" data-dialog="quota" data-user-id="{{ u.id }}" data-quota="{{ u.quota }}">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+            </button>
+            <button type="button" class="button px-2" title="重置密码" data-dialog="reset" data-user-id="{{ u.id }}">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.5 12.5 21 2"/><path d="m15.5 7 3 3"/><path d="m18.5 4 2.5 2.5"/></svg>
+            </button>
+            <button type="button" class="button btn-danger px-2" title="删除" data-dialog="delete" data-user-id="{{ u.id }}" data-username="{{ u.username }}">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+            </button>
+          </div>
+          {% else %}
+          <span class="text-xs text-zinc-400">不可操作</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td class="py-10 text-center text-zinc-400" colspan="6">暂无用户</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<dialog id="dialog-create">
+  <form method="post" action="{{ url_for('admin_users_create') }}" class="grid">
+    <div class="dialog-header">新建用户</div>
+    <div class="grid gap-3 p-4">
+      <label class="field-label">用户名
+        <input name="username" autocomplete="off" required>
+      </label>
+      <label class="field-label">邮箱配额
+        <input name="quota" type="number" min="0" value="10" required>
+      </label>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="button" data-close-dialog>取消</button>
+      <button type="submit" class="button btn-primary">创建并生成密码</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialog-quota">
+  <form method="post" class="grid">
+    <div class="dialog-header">修改配额</div>
+    <div class="p-4">
+      <label class="field-label">邮箱配额
+        <input name="quota" type="number" min="0" data-quota-input required>
+      </label>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="button" data-close-dialog>取消</button>
+      <button type="submit" class="button btn-primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialog-reset">
+  <form method="post" class="grid">
+    <div class="dialog-header">重置密码</div>
+    <div class="p-4 text-sm text-zinc-600">确定要为该用户重新生成密码吗？原密码将立即失效。</div>
+    <div class="dialog-footer">
+      <button type="button" class="button" data-close-dialog>取消</button>
+      <button type="submit" class="button btn-primary">确认重置</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialog-delete">
+  <form method="post" class="grid">
+    <div class="dialog-header">删除用户</div>
+    <div class="p-4 text-sm text-zinc-600">确定删除用户 <span data-delete-name class="font-medium text-zinc-900"></span>？其创建的邮箱仍会保留。</div>
+    <div class="dialog-footer">
+      <button type="button" class="button" data-close-dialog>取消</button>
+      <button type="submit" class="button btn-danger">删除</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialog-password" {% if new_password %}data-password="{{ new_password }}"{% endif %}>
+  <div class="grid">
+    <div class="dialog-header">已生成密码</div>
+    <div class="p-4">
+      <p class="text-sm text-zinc-600">用户 <span class="font-medium text-zinc-900">{{ new_username }}</span> 的密码：</p>
+      <p class="mt-2 break-all rounded bg-zinc-50 p-2 font-mono text-sm text-zinc-900" data-password-value></p>
+      <p class="mt-2 text-xs text-zinc-400">请妥善保存，此密码仅显示一次。</p>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="button btn-primary" data-close-dialog>我知道了</button>
+    </div>
+  </div>
+</dialog>
+{% endblock %}
